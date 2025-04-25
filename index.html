@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hatching Simulator</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Hatching Simulator</h1>
+        <p>Current Luck: <span id="luck">100%</span></p>
+
+        <div>
+            <button id="hatch-button">Hatch Eggs</button>
+            <input type="number" id="num-eggs" placeholder="Number of Eggs" min="1">
+        </div>
+
+        <div>
+            <button id="change-luck-button">Change Luck</button>
+            <input type="number" id="luck-input" placeholder="Enter Luck %">
+        </div>
+
+        <div id="results"></div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
