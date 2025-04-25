@@ -1,0 +1,2 @@
+- YOU MUST GET EVERY FILE FOR THIS TO WORK (index.html, script.js, styles.css)
+- After getting every file, search on your computer for the index.html file and open it with whatever browser you use
