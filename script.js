@@ -1,123 +1,133 @@
+// script.js
 const pets = [
-    { name: "Bow Bunny", baseChance: 64.0, rarity: "common" },
-    { name: "Easter Egg", baseChance: 30.0, rarity: "unique" },
-    { name: "Flying Bunny", baseChance: 3.0, rarity: "epic" },
-    { name: "Easter Serpent", baseChance: 1 / 2500 * 100, rarity: "legendary" },
-    { name: "Dualcorn", baseChance: 1 / 50000 * 100, rarity: "legendary" },
-    { name: "Holy Egg", baseChance: 1 / 500000 * 100, rarity: "legendary" },
-    { name: "Godly Gem", baseChance: 1 / 250000000 * 100, rarity: "secret" },
-    { name: "Dementor", baseChance: 1 / 1000000000 * 100, rarity: "secret" },
+  { name: "Bow Bunny",    baseChance: 64.0,    rarity: "common" },
+  { name: "Easter Egg",      baseChance: 30.0,    rarity: "unique" },
+  { name: "Flying Bunny",   baseChance: 3.0,     rarity: "epic" },
+  { name: "Easter Serpent", baseChance: 0.04,    rarity: "legendary" },
+  { name: "Dualcorn",baseChance: 0.002,   rarity: "legendary" },
+  { name: "Holy Egg",baseChance: 0.0002,   rarity: "legendary" },
+  { name: "Godly Gem",baseChance: 0.0000004,   rarity: "secret" },
+  { name: "Dementor",baseChance: 0.0000001,   rarity: "secret" },
 ];
 
-const shinyChance = 1 / 26;
-const mythicChance = 1 / 40;
+let shinyChance = 1 / 40;    // Updated shiny chance (fraction)
+let mythicChance = 1 / 100;  // Updated mythic chance (fraction)
 const mythicRarities = new Set(["legendary", "secret"]);
-
 let luckPercent = 100;
 
+// Recompute adjusted + normalized chances
 function applyLuck(pets, luckMultiplier) {
-    for (const pet of pets) {
-        if (mythicRarities.has(pet.rarity)) {
-            pet.adjustedChance = pet.baseChance * luckMultiplier;
-        } else {
-            pet.adjustedChance = pet.baseChance;
-        }
-    }
-    const total = pets.reduce((sum, pet) => sum + pet.adjustedChance, 0);
-    for (const pet of pets) {
-        pet.normalizedChance = pet.adjustedChance / total;
-    }
+  pets.forEach(pet => {
+    pet.adjustedChance = mythicRarities.has(pet.rarity)
+      ? pet.baseChance * luckMultiplier
+      : pet.baseChance;
+  });
+  const total = pets.reduce((sum, p) => sum + p.adjustedChance, 0);
+  pets.forEach(p => {
+    p.normalizedChance = p.adjustedChance / total;
+  });
 }
 
+// Choose one pet weighted by normalizedChance
 function choosePet() {
-    const roll = Math.random();
-    let cumulative = 0;
-    for (const pet of pets) {
-        cumulative += pet.normalizedChance;
-        if (roll <= cumulative) {
-            return pet;
-        }
-    }
-    return pets[pets.length - 1];
+  const roll = Math.random();
+  let cum = 0;
+  for (const pet of pets) {
+    cum += pet.normalizedChance;
+    if (roll <= cum) return pet;
+  }
+  return pets[pets.length - 1];
 }
 
-function getFinalOdds(petBaseChance, shiny, mythic) {
-    let chance = petBaseChance / 100;
-    if (shiny) {
-        chance *= shinyChance;
-    }
-    if (mythic) {
-        chance *= mythicChance;
-    }
-    return chance;
+// Build “1 in X” original odds string from baseChance + shiny/mythic
+function getOriginalOdds(baseChance, shiny, mythic) {
+  // baseChance is a percentage (e.g., 3.0 for 3%)
+  let odds = 1 / (baseChance / 100);
+  if (shiny)  odds *= 40;   // 1 in 40 for shinies
+  if (mythic) odds *= 100;  // 1 in 100 for mythics
+  return `1 in ${Math.round(odds).toLocaleString()}`;
 }
 
-function hatchEggs(numEggs) {
-    const results = {};
-    for (let i = 0; i < numEggs; i++) {
-        const pet = choosePet();
-        const isShiny = Math.random() < shinyChance;
-        const isMythic = mythicRarities.has(pet.rarity) && Math.random() < mythicChance;
+// Hatch N eggs
+function hatchEggs(num) {
+  const results = {};
+  for (let i = 0; i < num; i++) {
+    const pet = choosePet();
+    const isShiny = Math.random() < shinyChance;
+    const isMythic = mythicRarities.has(pet.rarity) && Math.random() < mythicChance;
+    let label = pet.name;
+    if (isShiny && isMythic)      label = `Shiny Mythic ${pet.name}`;
+    else if (isShiny)             label = `Shiny ${pet.name}`;
+    else if (isMythic)            label = `Mythic ${pet.name}`;
 
-        let finalName = pet.name;
-        if (isShiny && isMythic) {
-            finalName = `Shiny Mythic ${finalName}`;
-        } else if (isShiny) {
-            finalName = `Shiny ${finalName}`;
-        } else if (isMythic) {
-            finalName = `Mythic ${finalName}`;
-        }
-
-        if (!results[finalName]) {
-            results[finalName] = {
-                count: 0,
-                baseChance: pet.adjustedChance,
-                shiny: isShiny,
-                mythic: isMythic,
-            };
-        }
-
-        results[finalName].count += 1;
+    if (!results[label]) {
+      results[label] = {
+        count: 0,
+        normalizedChance: pet.normalizedChance, // drop rate (adjusted by luck)
+        baseChance: pet.baseChance,
+        shiny: isShiny,
+        mythic: isMythic
+      };
     }
-    return results;
+    results[label].count++;
+  }
+  return results;
 }
 
+// Render results table
 function printResults(results) {
-    let formattedResults = [];
-    for (const [name, data] of Object.entries(results)) {
-        const odds = getFinalOdds(data.baseChance, data.shiny, data.mythic);
-        const oddsStr = odds > 0 ? `1 in ${Math.round(1 / odds).toLocaleString()}` : "N/A";
-        formattedResults.push({ name, count: data.count, odds, oddsStr });
-    }
+  // Build an array with true variant probability included
+  const formatted = Object.entries(results).map(([name, d]) => {
+    const variantProb = d.normalizedChance
+      * (d.shiny  ? shinyChance  : 1)
+      * (d.mythic ? mythicChance : 1);
 
-    formattedResults.sort((a, b) => b.odds - a.odds);
+    return {
+      name: name,
+      count: d.count,
+      prob: variantProb,
+      oddsStr: getOriginalOdds(d.baseChance, d.shiny, d.mythic)
+    };
+  });
 
-    let resultHtml = "<h3>🎉 Hatch Results:</h3><ul>";
-    formattedResults.forEach(({ name, count, oddsStr }) => {
-        resultHtml += `<li>${name}: ${count} (Odds: ${oddsStr})</li>`;
-    });
-    resultHtml += "</ul>";
+  // Sort by highest-to-lowest actual probability
+  formatted.sort((a, b) => b.prob - a.prob);
 
-    document.getElementById("results").innerHTML = resultHtml;
+  let html = "<h3>🎉 Hatch Results:</h3><ul>";
+  formatted.forEach(item => {
+    html += `<li>${item.name}: ${item.count} (Original Odds: ${item.oddsStr})</li>`;
+  });
+  html += "</ul>";
+  document.getElementById("results").innerHTML = html;
 }
 
+// Event bindings
 document.getElementById("hatch-button").addEventListener("click", () => {
-    const numEggs = parseInt(document.getElementById("num-eggs").value);
-    if (isNaN(numEggs) || numEggs <= 0) {
-        alert("Please enter a valid number of eggs.");
-        return;
-    }
-    applyLuck(pets, luckPercent / 100);
-    const results = hatchEggs(numEggs);
-    printResults(results);
+  const n = parseInt(document.getElementById("num-eggs").value, 10);
+  if (isNaN(n) || n < 1) return alert("Please enter a valid number of eggs.");
+  applyLuck(pets, luckPercent / 100);
+  printResults(hatchEggs(n));
 });
 
 document.getElementById("change-luck-button").addEventListener("click", () => {
-    const newLuck = parseFloat(document.getElementById("luck-input").value);
-    if (isNaN(newLuck) || newLuck <= 0) {
-        alert("Please enter a valid luck percentage.");
-        return;
-    }
-    luckPercent = newLuck;
-    document.getElementById("luck").textContent = `${luckPercent}%`;
+  const v = parseFloat(document.getElementById("luck-input").value);
+  if (isNaN(v) || v < 0) return alert("Please enter a valid luck percentage.");
+  luckPercent = v;
+  document.getElementById("luck").textContent = `${luckPercent}%`;
+});
+
+document.getElementById("change-shiny-button").addEventListener("click", () => {
+  const v = parseFloat(document.getElementById("shiny-input").value) / 100;
+  if (isNaN(v) || v < 0) return alert("Please enter a valid shiny percentage.");
+  shinyChance = v;
+});
+
+document.getElementById("change-mythic-button").addEventListener("click", () => {
+  const v = parseFloat(document.getElementById("mythic-input").value) / 100;
+  if (isNaN(v) || v < 0) return alert("Please enter a valid mythic percentage.");
+  mythicChance = v;
+});
+
+document.getElementById("toggle-dark-mode").addEventListener("click", () => {
+  document.body.classList.toggle("dark-mode");
 });
